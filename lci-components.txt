@@ -1,4 +1,12 @@
+<<<<<<< HEAD
 market for heat, central or small-scale, natural gas
 
 **utilize the cut-off model approach! (potential reference)
+=======
+market for heat, central or small-scale, natural gas
+market group for electricity, low voltage
+market for water, completely softened
+
+**utilize the cut-off model approach! (potential reference)
+>>>>>>> main
 https://www.sciencedirect.com/science/article/pii/S0959652620329759#tbl6
