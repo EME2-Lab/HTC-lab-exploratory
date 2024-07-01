@@ -171,19 +171,15 @@ def ramping_heat(feedstock: Feedstock, reaction_temp: float) -> float:
     percent_water = feedstock.water_added / total_mass
     percent_feedstock = feedstock.quantity / total_mass
     
-    # 
     C_water = 4.184e-3
     C_biomass = (
         1e-6 * (5.340 * (reaction_temp + 273.15) - 299) * (1 - feedstock.moisture_content_target) + 
         C_water * feedstock.moisture_content_target
     )
-    # print('Biomass specific heating capacity: ' , str(C_biomass))
         
     # Assuming ambient temperature, 20°C
     water_heat = feedstock.water_added * C_water * (reaction_temp - 20) * percent_water
     feedstock_heat = feedstock.quantity * C_biomass * (reaction_temp - 20) * percent_feedstock
-    
-    # feedstock_heat = feedstock.quantity * feedstock.get_wet_hhv() * percent_feedstock
     
     ramping_heat = water_heat + feedstock_heat 
     
@@ -224,6 +220,10 @@ def get_electricity_rate(feedstock: Feedstock) -> float:
 
     N = 6.67
     D = 0.057912 
+    total_mass = feedstock.total_weight()
+    percent_water = feedstock.water_added / total_mass
+    percent_feedstock = feedstock.quantity / total_mass
+    feedstock.density = percent_feedstock * feedstock.density + percent_water * 1000
     rho = feedstock.density 
     mu = 1.002e-3
     
@@ -289,7 +289,7 @@ def get_parameter(reaction_conditions: str, parameter: str) -> float:
     reaction_conditions: str 
         Conditions for a reaction (feedstock, temp, time)
     parameter: str
-        Parameter of interest (gas yield, HC yield, HHV)
+        Parameter of interest (gas yield, HC yield, HHV_HC)
 
     '''
     reaction_conditions = reaction_conditions.split('hydrochar production, ')[1]
@@ -301,7 +301,7 @@ def get_parameter(reaction_conditions: str, parameter: str) -> float:
         df = pd.read_excel('experimental-data/HTC_yield_HHV.xlsx',sheet_name='Yield_Gas', engine='openpyxl')
     elif parameter == 'HC_yield': 
         df = pd.read_excel('experimental-data/HTC_yield_HHV.xlsx',sheet_name='Yield_HC', engine='openpyxl')
-    elif parameter == 'HHV': 
+    elif parameter == 'HHV_HC': 
         df = pd.read_excel('experimental-data/HTC_yield_HHV.xlsx',sheet_name='HHV_HC', engine='openpyxl')
     else: 
         raise ValueError(f"Parameter '{parameter}' is not valid.")
@@ -309,8 +309,8 @@ def get_parameter(reaction_conditions: str, parameter: str) -> float:
     filtered_df = df[df.iloc[:, 0] == str(feedstock) ]
     return filtered_df[filtered_df['hours'] == int(time)][int(temp)].iloc[0]
 
-# feedstock_condition = 'hydrochar production, stdSRU_220C_1hr'
-# print(get_parameter(feedstock_condition, 'gas_yield'))  
+feedstock_condition = 'hydrochar production, stdSRU_220C_1hr'
+print(get_parameter(feedstock_condition, 'HHV_HC'))  
 
 # print(get_T_o_solution(220.0))
 # print(get_heat_flux(220.0))
