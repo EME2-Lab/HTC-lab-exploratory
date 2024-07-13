@@ -48,7 +48,7 @@ def get_T_o_solution(reaction_temp: float) -> float :
         Reaction temperature in °C
         
     Other Variables & Constants: 
-    Assuming a Parr 4523 reactor: https://www.parrinst.com/products/stirred-reactors/series-4520-1-2l-bench-top-reactors/specifications/
+    Assuming a Parr 4520 reactor: https://www.parrinst.com/products/stirred-reactors/series-4520-1-2l-bench-top-reactors/specifications/
     r_s: float 
         Non-insulated tank radius in meters (m)
     r_o: float 
@@ -293,7 +293,13 @@ def get_parameter(reaction_conditions: str, parameter: str) -> float:
 
     '''
     reaction_conditions = reaction_conditions.split('hydrochar production, ')[1]
-    feedstock, temp, time = reaction_conditions.split('_')
+      
+    if '_mc' in reaction_conditions:
+        reaction_conditions = reaction_conditions.replace('_mc', '', 1)
+        feedstock, temp, time = reaction_conditions.split('_')
+    else: 
+        feedstock, temp, time = reaction_conditions.split('_')
+    
     temp = int(temp.split('C')[0])
     time = int(time.split('hr')[0])
     
@@ -309,8 +315,8 @@ def get_parameter(reaction_conditions: str, parameter: str) -> float:
     filtered_df = df[df.iloc[:, 0] == str(feedstock) ]
     return filtered_df[filtered_df['hours'] == int(time)][int(temp)].iloc[0]
 
-feedstock_condition = 'hydrochar production, stdSRU_220C_1hr'
-print(get_parameter(feedstock_condition, 'HHV_HC'))  
+# feedstock_condition = 'hydrochar production, stdSRU_mc_220C_1hr'
+# print(get_parameter(feedstock_condition, 'HHV_HC'))  
 
 # print(get_T_o_solution(220.0))
 # print(get_heat_flux(220.0))
