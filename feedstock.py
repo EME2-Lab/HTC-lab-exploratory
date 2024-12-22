@@ -65,7 +65,7 @@ class Feedstock:
         self.moisture = moisture
         self.moisture_std = mc_std
         
-    def compute_hhv(self, feedstock_manager: object):
+    def compute_hhv(self, temp: int, time: int, feedstock_manager: object):
         '''Calculate and set the higher heating value (HHV) for a composite feedstock.'''
         composite_hhv = 0.0
         composite_hhv_std = 0.0
@@ -73,26 +73,30 @@ class Feedstock:
 
         for feedstock_name, percent_str in feedstocks:
             percent = float(percent_str) / 100
-            feedstock = feedstock_manager.get_feedstock(feedstock_name)
+            if percent == 0.33: 
+                percent = 1/3
+            feedstock = feedstock_manager.get_feedstock(feedstock_name, temp, time)
             composite_hhv += feedstock.hhv * percent
             composite_hhv_std += (feedstock.hhv_std * percent) ** 2
 
         self.hhv = composite_hhv
         self.hhv_std = composite_hhv_std ** 0.5
 
-    def compute_density(self, feedstock_manager: object):
+    def compute_density(self, temp: int, time: int, feedstock_manager: object):
         '''Calculate and set the density for a composite feedstock.'''
         composite_density = 0.0
         feedstocks = re.findall(r'([A-Za-z]+)(\d+)', self.name)
 
         for feedstock_name, percent_str in feedstocks:
             percent = float(percent_str) / 100
-            feedstock = feedstock_manager.get_feedstock(feedstock_name)
+            if percent == 0.33: 
+                percent = 1/3
+            feedstock = feedstock_manager.get_feedstock(feedstock_name, temp, time)
             composite_density += feedstock.density * percent
 
         self.density = composite_density
         
-    def compute_moisture(self, feedstock_manager: object):
+    def compute_moisture(self, temp: int, time: int, feedstock_manager: object):
         '''Calculate and set the moisture content for a composite feedstock.'''
         composite_moisture = 0.0
         composite_mc_std = 0.0
@@ -100,21 +104,25 @@ class Feedstock:
 
         for feedstock_name, percent_str in feedstocks:
             percent = float(percent_str) / 100
-            feedstock = feedstock_manager.get_feedstock(feedstock_name)
+            if percent == 0.33: 
+                percent = 1/3
+            feedstock = feedstock_manager.get_feedstock(feedstock_name, temp, time)
             composite_moisture += feedstock.moisture * percent
             composite_mc_std += (feedstock.moisture_std * percent) ** 2
 
         self.moisture = composite_moisture
         self.moisture_std = composite_mc_std ** 0.5
     
-    def compute_quantity(self, feedstock_manager: object):
+    def compute_quantity(self, temp: int, time: int, feedstock_manager: object):
         '''Calculate and set the quantity for a composite feedstock.'''
         composite_quantity = 0.0
         feedstocks = re.findall(r'([A-Za-z]+)(\d+)', self.name)
 
         for feedstock_name, percent_str in feedstocks:
             percent = float(percent_str) / 100
-            feedstock = feedstock_manager.get_feedstock(feedstock_name)
+            if percent == 0.33: 
+                percent = 1/3
+            feedstock = feedstock_manager.get_feedstock(feedstock_name, temp, time)
             composite_quantity += feedstock.quantity * percent
 
         self.quantity = composite_quantity
@@ -243,6 +251,43 @@ def create_elementary_feedstocks() -> object:
                     new_feedstock.time = time
                     
     return elementary_feedstocks
+
+def create_composite_elementary_feedstocks() -> object: 
+    '''
+    Returns Feedstock Manager with 24 elements consisting of the 4 main composite mixtures, 2 residence times, 3 reaction temperatures
+    '''
+    elementary_feedstocks = create_elementary_feedstocks()
+    composite_feedstocks = FeedstockManager()
+
+    HTC_temp = [190, 220, 250]
+    HTC_reaction_time = [1,3]
+
+    df = pd.read_excel('experimental-data/HTC_yield_HHV.xlsx',sheet_name='Yield_HC', engine='openpyxl')
+    for row in [row for index, row in df.drop_duplicates(subset='Feed').iterrows() if '_' in row['Feed']]:
+        
+        for temp in HTC_temp: 
+            for time in HTC_reaction_time:
+                name = row['Feed']
+                
+                # Create a Feedstock object 
+                new_feedstock = Feedstock(name=name)
+                new_feedstock.temp = temp
+                new_feedstock.time = time 
+                
+                # Update values of HHV based on previous values 
+                new_feedstock.compute_hhv(temp, time, elementary_feedstocks)
+                hhv_sheet = pd.read_excel('experimental-data/HTC_yield_HHV.xlsx',sheet_name='HHV_HC', engine='openpyxl')
+                filtered_df = hhv_sheet[hhv_sheet.iloc[:, 0] == str(name) ]
+                new_feedstock.hhv = filtered_df[filtered_df['hours'] == int(time)][int(temp)].iloc[0]
+                
+                # Computing remaining parameters
+                new_feedstock.compute_moisture(temp, time, elementary_feedstocks)
+                new_feedstock.compute_density(temp, time, elementary_feedstocks)
+                
+                # Adding Item to Composite Feedstock Manager 
+                composite_feedstocks.add_feedstock(new_feedstock)
+                
+    return composite_feedstocks          
 
 # excluded_feedstocks = {"rawSRU", "rawBSG"}
 # for attr, feedstocks in elementary_feedstocks.__dict__.items():

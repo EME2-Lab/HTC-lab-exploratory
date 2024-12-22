@@ -2,6 +2,7 @@ import numpy as np
 from scipy.optimize import fsolve
 import math
 import pandas as pd
+import re
 from feedstock import Feedstock, FeedstockManager, create_elementary_feedstocks
 
 # Feedstock Quantity 
@@ -154,7 +155,7 @@ def get_reaction_heat(reaction_temp: float, residence_time: float) -> float:
 
 def ramping_heat(feedstock: Feedstock, reaction_temp: float) -> float:
     '''
-    Returns the heat needed to reach the reaction temperature in megejoules (MJ). 
+    Returns the heat needed to reach the reaction temperature in megajoules (MJ). 
     
     Parameters
     feedstock: Feedstock 
@@ -258,7 +259,7 @@ def get_electricity_needed(feedstock: Feedstock, residence_time: float, reaction
 def get_co2_emissions(yield_HC: float, gas_yield: float, feedstock: Feedstock): 
     if feedstock.moisture != feedstock.moisture_content_target: 
         get_feedstock_quantity(yield_HC, feedstock)
-        get_water_quantity(feedstock)
+        get_water_quantity(yield_HC, feedstock)
     return feedstock.total_weight() * (1-feedstock.moisture) * gas_yield
 
 # PW Generated 
@@ -273,12 +274,17 @@ def get_post_processing(hc_placeholder: float):
     '''
     # Unit: W⋅h
     vacuum_filtration = 60 * 0.25 
-    drying = 1200 * 24 * hc_placeholder 
+    drying = 388 * hc_placeholder 
     
     return (vacuum_filtration + drying) / 1000
     
     
-    
+def split_reactor_conditions(reaction_conditions): 
+    if len(reaction_conditions.split('_')) > 3: 
+        feedstock, temp, time = '_'.join(reaction_conditions.split('_')[:-2]), reaction_conditions.split('_')[-2], reaction_conditions.split('_')[-1]
+    else: 
+        feedstock, temp, time = reaction_conditions.split('_')
+    return feedstock, temp, time 
 
 # Converting Name into relevant parameters
 def get_parameter(reaction_conditions: str, parameter: str) -> float: 
@@ -296,9 +302,15 @@ def get_parameter(reaction_conditions: str, parameter: str) -> float:
       
     if '_mc' in reaction_conditions:
         reaction_conditions = reaction_conditions.replace('_mc', '', 1)
-        feedstock, temp, time = reaction_conditions.split('_')
+        feedstock, temp, time = split_reactor_conditions(reaction_conditions)
+    elif '_sa_lb' in reaction_conditions: 
+        reaction_conditions = reaction_conditions.replace('_sa_lb', '', 1)
+        feedstock, temp, time = split_reactor_conditions(reaction_conditions)
+    elif '_sa_ub' in reaction_conditions: 
+        reaction_conditions = reaction_conditions.replace('_sa_ub', '', 1)
+        feedstock, temp, time = split_reactor_conditions(reaction_conditions)
     else: 
-        feedstock, temp, time = reaction_conditions.split('_')
+        feedstock, temp, time = split_reactor_conditions(reaction_conditions)
     
     temp = int(temp.split('C')[0])
     time = int(time.split('hr')[0])
@@ -313,10 +325,32 @@ def get_parameter(reaction_conditions: str, parameter: str) -> float:
         raise ValueError(f"Parameter '{parameter}' is not valid.")
                 
     filtered_df = df[df.iloc[:, 0] == str(feedstock) ]
+    
+    # If Loop for Handling Gas Yields for Composite Feedstocks
+    if len(filtered_df) < 1:
+        parameter_value = 0 
+        feedstocks = re.findall(r'([A-Za-z]+)(\d+)', feedstock)
+        
+        for feedstock_name, percent_str in feedstocks: 
+            if feedstock_name == 'rawBSG':
+                feedstock_name = 'stdBSG'
+            if feedstock_name == 'rawSRU': 
+                feedstock_name = 'stdSRU' 
+            percent = float(percent_str) / 100 
+            if percent == 0.33: 
+                percent = 1/3
+            parameter_feedstock = get_parameter(f"hydrochar production, {feedstock_name}_{str(temp)}C_{str(time)}hr", parameter)
+            parameter_value += parameter_feedstock * percent 
+
+        return parameter_value
     return filtered_df[filtered_df['hours'] == int(time)][int(temp)].iloc[0]
 
 # feedstock_condition = 'hydrochar production, stdSRU_mc_220C_1hr'
 # print(get_parameter(feedstock_condition, 'HHV_HC'))  
+
+
+# feedstock_condition = 'hydrochar production, rawSRU50_rawBSG50_220C_1hr'
+# print(get_parameter(feedstock_condition, 'gas_yield'))  
 
 # print(get_T_o_solution(220.0))
 # print(get_heat_flux(220.0))
