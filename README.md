@@ -22,12 +22,12 @@ Before using this repository, ensure you meet the following requirements:
      │   ├── HTC-lab-exploratory
 
 Access to a cluster for high-performance computing is highly recommended, though this script can be run on a local desktop in a reasonable timeframe, if needed. Here are some helpful resources that may be helpful for comprehending key components  
-- [Industrial Ecology Open Online Course] (https://www.industrialecology.uni-freiburg.de/teaching): Foundations of Industrial Ecology. 
-- [Brightway LCA Software Framework] (https://docs.brightway.dev/en/latest/index.html): Brightway 2.5 Python Documentation
-- [Brightway Tutorials] (https://learn.brightway.dev/en/latest/content/home.html): “Learn Brightway” Book
-- [Additional Brightway Resources] (https://wiki.ubc.ca/Documentation:Brightway_Tutorials): Documentation: Brightway Tutorials
-- [LCA Textbook] (https://app.boxcn.net/s/5mnzyq1y3gcyjrveubf4/folder/52228826119) 
-- [Ecoinvent Database] (https://ecoquery.ecoinvent.org/3.10/cutoff/search): Requires a license to view data.  
+- [Industrial Ecology Open Online Course](https://www.industrialecology.uni-freiburg.de/teaching): Foundations of Industrial Ecology.  
+- [Brightway LCA Software Framework](https://docs.brightway.dev/en/latest/index.html): Brightway 2.5 Python Documentation.  
+- [Brightway Tutorials](https://learn.brightway.dev/en/latest/content/home.html): “Learn Brightway” Book.  
+- [Additional Brightway Resources](https://wiki.ubc.ca/Documentation:Brightway_Tutorials): Documentation: Brightway Tutorials.  
+- [LCA Textbook](https://app.boxcn.net/s/5mnzyq1y3gcyjrveubf4/folder/52228826119).  
+- [Ecoinvent Database](https://ecoquery.ecoinvent.org/3.10/cutoff/search): Requires a license to view data.  
 
 ## Folder Structure
 
