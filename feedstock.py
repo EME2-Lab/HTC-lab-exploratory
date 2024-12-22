@@ -1,4 +1,5 @@
 import re 
+import os
 import pandas as pd
 
 class Feedstock:
@@ -6,7 +7,8 @@ class Feedstock:
     Creates a feedstock to be utilized by the hydrothermal carbonization model(s). 
     '''
     def __init__(self, name: str, hhv: float = 0.0, hhv_std: float = 0.0,
-                 moisture: float = 0.0, moisture_std: float = 0.0, density: float = 0.0):
+                 moisture: float = 0.0, moisture_std: float = 0.0, density: float = 0.0,
+                time: int = 1, temp: int = 190):
         '''
         Initializes a feedstock with default values set to 0 unless otherwise specified. As all feedstocks are 
         either a standard misture or a combination of feedstocks, the naming conventions are as follows: 
@@ -19,6 +21,7 @@ class Feedstock:
             a. For example, stdBSG50_rawSRU50 or rawBSG40_rawDCW30_rawSRU30. 
             b. For cleaner naming conventions, this analysis will not use decimals after the decimal point.  
             c. stdSRU_stdBSG_rawDCW is the combination of all three feedstocks.  
+        4) To prevent the complexity of names, each feedstock has individual properties that differ based on reaction conditions. 
             
         Parameters:
         name (str): The name of the feedstock.
@@ -29,21 +32,24 @@ class Feedstock:
         water_added (float): The amount of water added, in a mass measurement.
         density (float): The density of the feedstock mixture (without water) in kg/m^3.  
         quantity (float): The quantity of a feedstock or composite feedstock in a mixture. 
+        temp (int): The temperature of the feedstock in an HTC reaction in °C 
+        time (int): The residence time for the feedstock in an HTC reaction in hrs.
+         
         '''
         self.name = name
         self.hhv = hhv
         self.hhv_std = hhv_std
         self.moisture = moisture
         self.moisture_std = moisture_std
+        if self.moisture >= 0.85: 
+            self.moisture_content_target = moisture 
+        else: 
+            self.moisture_content_target = 0.85 
         self.density = density
         self.water_added = 0.0
         self.quantity = 0.0
-
-    def change_name(self, name: float):
-        '''
-        Setting a new name for a feedstock. 
-        '''
-        self.name = name
+        self.temp = temp
+        self.time = time
         
     def set_hhv(self, hhv: float, hhv_std: float):
         '''
@@ -58,20 +64,8 @@ class Feedstock:
         '''
         self.moisture = moisture
         self.moisture_std = mc_std
-
-    def set_density(self, density: float):
-        self.density = density
         
-    def set_water_added(self, water_added: float):
-        self.water_added = water_added
-
-    def set_quantity(self, quantity: float):
-        '''
-        Sets quantity of feedstock without the addition of water for a feedstock with known values. 
-        '''
-        self.quantity = quantity
-
-    def compute_hhv(self, feedstock_manager):
+    def compute_hhv(self, temp: int, time: int, feedstock_manager: object):
         '''Calculate and set the higher heating value (HHV) for a composite feedstock.'''
         composite_hhv = 0.0
         composite_hhv_std = 0.0
@@ -79,26 +73,30 @@ class Feedstock:
 
         for feedstock_name, percent_str in feedstocks:
             percent = float(percent_str) / 100
-            feedstock = feedstock_manager.get_feedstock(feedstock_name)
+            if percent == 0.33: 
+                percent = 1/3
+            feedstock = feedstock_manager.get_feedstock(feedstock_name, temp, time)
             composite_hhv += feedstock.hhv * percent
             composite_hhv_std += (feedstock.hhv_std * percent) ** 2
 
         self.hhv = composite_hhv
         self.hhv_std = composite_hhv_std ** 0.5
 
-    def compute_density(self, feedstock_manager):
+    def compute_density(self, temp: int, time: int, feedstock_manager: object):
         '''Calculate and set the density for a composite feedstock.'''
         composite_density = 0.0
         feedstocks = re.findall(r'([A-Za-z]+)(\d+)', self.name)
 
         for feedstock_name, percent_str in feedstocks:
             percent = float(percent_str) / 100
-            feedstock = feedstock_manager.get_feedstock(feedstock_name)
+            if percent == 0.33: 
+                percent = 1/3
+            feedstock = feedstock_manager.get_feedstock(feedstock_name, temp, time)
             composite_density += feedstock.density * percent
 
         self.density = composite_density
         
-    def compute_moisture(self, feedstock_manager):
+    def compute_moisture(self, temp: int, time: int, feedstock_manager: object):
         '''Calculate and set the moisture content for a composite feedstock.'''
         composite_moisture = 0.0
         composite_mc_std = 0.0
@@ -106,37 +104,43 @@ class Feedstock:
 
         for feedstock_name, percent_str in feedstocks:
             percent = float(percent_str) / 100
-            feedstock = feedstock_manager.get_feedstock(feedstock_name)
+            if percent == 0.33: 
+                percent = 1/3
+            feedstock = feedstock_manager.get_feedstock(feedstock_name, temp, time)
             composite_moisture += feedstock.moisture * percent
             composite_mc_std += (feedstock.moisture_std * percent) ** 2
 
         self.moisture = composite_moisture
         self.moisture_std = composite_mc_std ** 0.5
     
-    def compute_quantity(self, feedstock_manager):
+    def compute_quantity(self, temp: int, time: int, feedstock_manager: object):
         '''Calculate and set the quantity for a composite feedstock.'''
         composite_quantity = 0.0
         feedstocks = re.findall(r'([A-Za-z]+)(\d+)', self.name)
 
         for feedstock_name, percent_str in feedstocks:
             percent = float(percent_str) / 100
-            feedstock = feedstock_manager.get_feedstock(feedstock_name)
+            if percent == 0.33: 
+                percent = 1/3
+            feedstock = feedstock_manager.get_feedstock(feedstock_name, temp, time)
             composite_quantity += feedstock.quantity * percent
 
         self.quantity = composite_quantity
         
-    def compute_water_added(self, ideal_mc: float):
-        '''Calcuate and set the amount of water needed to reach an ideal moisture content'''
-        if ideal_mc < self.moisture:
+    def compute_water_added(self):
+        '''Calcuate and set the amount of water needed to reach an ideal moisture content for feedstocks'''
+        ideal_mc = self.moisture_content_target
+        if ideal_mc > self.moisture:
             water_needed =  (self.quantity * (1 - ideal_mc)) / (1 - self.moisture)
             self.water_added = water_needed
+            self.moisture = ideal_mc
             return water_needed
 
         else: 
-            return 0
+            return self.water_added
     
-    def get_dry_hhv(self) -> float:
-        """Calculate and return the dry higher heating value (HHV)"""
+    def get_wet_hhv(self) -> float:
+        """Calculate and return the wet higher heating value (HHV)"""
         return self.hhv * (1 - self.moisture / 100)
 
     def total_energy_content(self) -> float:
@@ -148,10 +152,19 @@ class Feedstock:
         """Calculate and return the total weight with added water"""
         return self.quantity + self.water_added
 
+    # def get_BW_parameters(self) -> dict:
+    #     """Create a dictionary with keys 'name' and 'amount' for float attributes."""
+    #     result = []
+    #     for attr, value in self.__dict__.items():
+    #         if isinstance(value, float):
+    #             result.append({'name': attr, 'amount': value})
+    #     return result
+        
     def __repr__(self):
         return (f"Feedstock(name={self.name}, hhv={self.hhv}, hhv_std={self.hhv_std}, "
                 f"moisture={self.moisture}, moisture_std={self.moisture_std}, density = {self.density}, "
-                f"water_added={self.water_added}, quantity={self.quantity})")
+                f"moisture_target={self.moisture_content_target}, water_added={self.water_added}, quantity={self.quantity}, "
+                f"temp={self.temp}C, time={self.time}hr)")
     
 class FeedstockManager:
     '''
@@ -161,43 +174,127 @@ class FeedstockManager:
         self.feedstocks = []
 
     def add_feedstock(self, feedstock: Feedstock):
+        '''Adds a feedstock to Feedstock Manager'''
         self.feedstocks.append(feedstock)
         
     def delete_feedstock(self, name: str):
+        '''Deletes a feedstock from Feedstock Manager'''
         if name in self.feedstocks:
             del self.feedstocks[name]
         else:
             raise ValueError(f"Feedstock with name '{name}' not found.")
 
-    def get_feedstock(self, name: str) -> Feedstock:
+    def get_feedstock(self, name: str, temp: int, time: int) -> Feedstock:
+        '''Returns a Feedstock object, given a valid feedstock name, reaction temp, and reaction time'''
         for feedstock in self.feedstocks:
-            if feedstock.name == name:
+            if feedstock.name == name and feedstock.temp == temp and feedstock.time == time:
                 return feedstock
         raise ValueError(f"Feedstock with name '{name}' not found.")
+    
+    def duplicate_feedstock(self, original_name: str, new_name: str, temp: int, time: int):
+        '''Duplicates a feedstock based on name & returns the new feedstock'''
+        original_feedstock = self.get_feedstock(original_name, temp, time)
+        new_feedstock = Feedstock(
+            name=new_name,
+            hhv=original_feedstock.hhv,
+            hhv_std=original_feedstock.hhv_std,
+            moisture=original_feedstock.moisture,
+            density= original_feedstock.density, 
+            moisture_std=original_feedstock.moisture_std, 
+        )
+        
+        new_feedstock.temp = original_feedstock.temp
+        new_feedstock.time = original_feedstock.time
+        new_feedstock.water_added = original_feedstock.water_added
+        new_feedstock.quantity = original_feedstock.quantity
+        
+        self.add_feedstock(new_feedstock)
+        return new_feedstock
 
     def __repr__(self):
         return f"FeedstockManager(feedstocks={self.feedstocks})"    
       
- 
-# Create Feedstock objects
-elementary_feedstocks = FeedstockManager()
-df = pd.read_excel('experimental-data/HTC_yield_HHV.xlsx', sheet_name='FeedsProperties')
 
-for index, row in df.iterrows():
-    name = 'raw' + row['Feed']
-    hhv = row['HHV']
-    hhv_std = row['HHV_std']
-    moisture = row['moisture']
-    moisture_std = row['moisture_std']
-    density = row['density']
-
-    # Create a Feedstock object
-    feedstock = Feedstock(name=name, hhv=hhv, hhv_std=hhv_std, moisture=moisture, moisture_std=moisture_std, density=density)
+def create_elementary_feedstocks() -> object:
+    '''
+    Returns initial feedstocks for use
+    '''     
+    elementary_feedstocks = FeedstockManager()
+    df = pd.read_excel('experimental-data/HTC_yield_HHV.xlsx',sheet_name='FeedsProperties', engine='openpyxl')
+    HTC_temp = [190, 220, 250]
+    HTC_reaction_time = [1,3]
     
-    # Add to elementary_feedstocks 
-    elementary_feedstocks.add_feedstock(feedstock)
+    for index, row in df.iterrows():
+        for temp in HTC_temp: 
+            for time in HTC_reaction_time: 
+                name = 'raw' + row['Feed']
+                hhv = row['HHV']
+                hhv_std = row['HHV_std']
+                moisture = row['moisture']
+                moisture_std = row['moisture_std']
+                density = row['density']
 
-print(elementary_feedstocks)
+                # Create a Feedstock object
+                feedstock = Feedstock(name=name, hhv=hhv, hhv_std=hhv_std, moisture=moisture, 
+                                      moisture_std=moisture_std, density=density)         
+                feedstock.temp = temp
+                feedstock.time = time
+                
+                # Add to elementary_feedstocks 
+                elementary_feedstocks.add_feedstock(feedstock)
+                
+                # Setting up infrastructure for standard feedstocks 
+                if feedstock.name == "rawBSG" or feedstock.name == "rawSRU": 
+                    new_feedstock = elementary_feedstocks.duplicate_feedstock(feedstock.name, "std" + feedstock.name[3:], 
+                                                                              feedstock.temp, feedstock.time)
+                    new_feedstock.temp = temp
+                    new_feedstock.time = time
+                    
+    return elementary_feedstocks
+
+def create_composite_elementary_feedstocks() -> object: 
+    '''
+    Returns Feedstock Manager with 24 elements consisting of the 4 main composite mixtures, 2 residence times, 3 reaction temperatures
+    '''
+    elementary_feedstocks = create_elementary_feedstocks()
+    composite_feedstocks = FeedstockManager()
+
+    HTC_temp = [190, 220, 250]
+    HTC_reaction_time = [1,3]
+
+    df = pd.read_excel('experimental-data/HTC_yield_HHV.xlsx',sheet_name='Yield_HC', engine='openpyxl')
+    for row in [row for index, row in df.drop_duplicates(subset='Feed').iterrows() if '_' in row['Feed']]:
+        
+        for temp in HTC_temp: 
+            for time in HTC_reaction_time:
+                name = row['Feed']
+                
+                # Create a Feedstock object 
+                new_feedstock = Feedstock(name=name)
+                new_feedstock.temp = temp
+                new_feedstock.time = time 
+                
+                # Update values of HHV based on previous values 
+                new_feedstock.compute_hhv(temp, time, elementary_feedstocks)
+                hhv_sheet = pd.read_excel('experimental-data/HTC_yield_HHV.xlsx',sheet_name='HHV_HC', engine='openpyxl')
+                filtered_df = hhv_sheet[hhv_sheet.iloc[:, 0] == str(name) ]
+                new_feedstock.hhv = filtered_df[filtered_df['hours'] == int(time)][int(temp)].iloc[0]
+                
+                # Computing remaining parameters
+                new_feedstock.compute_moisture(temp, time, elementary_feedstocks)
+                new_feedstock.compute_density(temp, time, elementary_feedstocks)
+                
+                # Adding Item to Composite Feedstock Manager 
+                composite_feedstocks.add_feedstock(new_feedstock)
+                
+    return composite_feedstocks          
+
+# excluded_feedstocks = {"rawSRU", "rawBSG"}
+# for attr, feedstocks in elementary_feedstocks.__dict__.items():
+#     for feedstock in feedstocks:
+#         if feedstock.name not in excluded_feedstocks:
+#             print(feedstock.name, feedstock.time, feedstock.temp)
+
 
 # # Creating stdSRU & stdBSG 
 # def create_standard_feedstock(name, feedstock_manager): 

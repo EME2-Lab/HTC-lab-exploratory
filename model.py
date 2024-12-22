@@ -1,21 +1,42 @@
 import numpy as np
 from scipy.optimize import fsolve
 import math
-from feedstock import Feedstock, FeedstockManager, elementary_feedstocks
+import pandas as pd
+import re
+from feedstock import Feedstock, FeedstockManager, create_elementary_feedstocks
 
-def HTC_model():
-    '''
-    exe: x
-    dmdm: x
-    mddmd: x 
-    Parameters
-    ----------
-    fig_name : str
-        name of figure. It is the name of the png od pfd file to be saved
-        
-    '''
+# Feedstock Quantity 
+def get_feedstock_quantity(yield_HC: float, feedstock: Feedstock):
+    feedstock_quantity =  1 / (yield_HC * (1 - feedstock.moisture)) 
+    feedstock.quantity = feedstock_quantity
+    return feedstock_quantity
+
+
+# Water Quantity 
+def get_water_quantity(yield_HC: float, feedstock: Feedstock): 
+    feedstock_quantity =  1 / (yield_HC * (1 - feedstock.moisture)) 
+    feedstock.quantity = feedstock_quantity
     
-# Helper Functions 
+    ideal_mc = feedstock.moisture_content_target
+    if ideal_mc > feedstock.moisture:
+        water_needed =  (feedstock.quantity * (1 - ideal_mc)) / (1 - feedstock.moisture)
+        feedstock.water_added = water_needed
+        # feedstock.water_added = water_needed
+        feedstock.moisture = ideal_mc
+        return water_needed
+    else: 
+        # Returns default value of 0
+        return feedstock.water_added
+        # raise ValueError(
+        #     f"Feedstock with name '{feedstock.name}' has an ideal_mc of {feedstock.moisture_content_target} 
+        #         but a moisture of {feedstock.moisture}"
+        # )
+    
+    # water_quantity = feedstock.compute_water_added()
+    # return water_quantity
+
+
+# Heat Needed 
 def get_T_o_solution(reaction_temp: float) -> float :
     '''
     Returns To in Kelvin (K) based on eqn (6) in this paper: 
@@ -28,7 +49,7 @@ def get_T_o_solution(reaction_temp: float) -> float :
         Reaction temperature in °C
         
     Other Variables & Constants: 
-    Assuming a Parr 4523 reactor: https://www.parrinst.com/products/stirred-reactors/series-4520-1-2l-bench-top-reactors/specifications/
+    Assuming a Parr 4520 reactor: https://www.parrinst.com/products/stirred-reactors/series-4520-1-2l-bench-top-reactors/specifications/
     r_s: float 
         Non-insulated tank radius in meters (m)
     r_o: float 
@@ -134,7 +155,7 @@ def get_reaction_heat(reaction_temp: float, residence_time: float) -> float:
 
 def ramping_heat(feedstock: Feedstock, reaction_temp: float) -> float:
     '''
-    Returns the heat needed to reach the reaction temperature in megejoules (MJ). 
+    Returns the heat needed to reach the reaction temperature in megajoules (MJ). 
     
     Parameters
     feedstock: Feedstock 
@@ -143,35 +164,35 @@ def ramping_heat(feedstock: Feedstock, reaction_temp: float) -> float:
         Reaction temperature in °C
     C: float
         Specific Heat Capacity of Water in MJ / kg °C
+    C_biomass: float
+        Specific Heat Capacity of Biomass in MJ / kg° C
+        Follows eqn (3) from this paper: https://www.sciencedirect.com/science/article/pii/S0016236113006856
     ''' 
     total_mass = feedstock.total_weight()
     percent_water = feedstock.water_added / total_mass
     percent_feedstock = feedstock.quantity / total_mass
     
-    # 
-    C = 4.184e-3
-    
+    C_water = 4.184e-3
+    C_biomass = (
+        1e-6 * (5.340 * (reaction_temp + 273.15) - 299) * (1 - feedstock.moisture_content_target) + 
+        C_water * feedstock.moisture_content_target
+    )
+        
     # Assuming ambient temperature, 20°C
-    water_heat = feedstock.water_added * C * (reaction_temp - 20) * percent_water
-    feedstock_heat = feedstock.quantity * feedstock.hhv * percent_feedstock
+    water_heat = feedstock.water_added * C_water * (reaction_temp - 20) * percent_water
+    feedstock_heat = feedstock.quantity * C_biomass * (reaction_temp - 20) * percent_feedstock
     
     ramping_heat = water_heat + feedstock_heat 
     
     return ramping_heat
-    
-def get_ramping_time(ramping_heat: float, heating_rate: float) -> float: 
-    '''
-    Returns the time needed for heating in hours. 
-    
-    Parameters
-    ramping_heat : float
-        Ramping heat in megajoules (MJ)
-    reaction_temp: float 
-        Rate at which heat is supplied to reactor in Watts (W). 
-    ''' 
-    return ( ramping_heat * 3.6 ) / heating_rate
 
-def get_electricity(feedstock: Feedstock) -> float: 
+def get_heat_needed(feedstock: Feedstock, reaction_temp: float, residence_time: float) -> float:
+    '''Returns total heat needed in kWh'''
+    return (get_reaction_heat(reaction_temp, residence_time) + ramping_heat(feedstock, reaction_temp))/3.6    
+
+
+# Electricity Needed  
+def get_electricity_rate(feedstock: Feedstock) -> float: 
     '''
     Returns the electricity from mixing in kW based on eqn (7) in this paper & supplementary information in this paper: 
         https://pubs.rsc.org/en/content/articlelanding/2012/ee/c2ee22180b#cit31
@@ -200,8 +221,12 @@ def get_electricity(feedstock: Feedstock) -> float:
 
     N = 6.67
     D = 0.057912 
+    total_mass = feedstock.total_weight()
+    percent_water = feedstock.water_added / total_mass
+    percent_feedstock = feedstock.quantity / total_mass
+    feedstock.density = percent_feedstock * feedstock.density + percent_water * 1000
     rho = feedstock.density 
-    mu = 0.001002
+    mu = 1.002e-3
     
     R_e = N * D**2 * (rho / mu) 
     N_p = 94.043 * R_e ** -0.599
@@ -209,7 +234,137 @@ def get_electricity(feedstock: Feedstock) -> float:
     electricity_mixing = N_p * rho * N**3 * D**5
     return electricity_mixing
     
+def get_ramping_time(ramping_heat: float, heating_rate: float) -> float: 
+    '''
+    Returns the time needed for heating in hours. 
+    
+    Parameters
+    ramping_heat : float
+        Ramping heat in megajoules (MJ)
+    reaction_temp: float 
+        Rate at which heat is supplied to reactor in Watts (W). 
+    ''' 
+    return ( ramping_heat / 3.6 ) / (heating_rate * 1e-3)
+
+def get_electricity_needed(feedstock: Feedstock, residence_time: float, reaction_temp: float, heating_rate = 1500) -> float:
+    '''
+    Returns total electricity needed in kWh
+    '''
+    electricity_rate = get_electricity_rate(feedstock)
+    time = get_ramping_time(ramping_heat(feedstock, reaction_temp), heating_rate) + residence_time
+    return electricity_rate * time
+
+
+# CO2 Emissions 
+def get_co2_emissions(yield_HC: float, gas_yield: float, feedstock: Feedstock): 
+    if feedstock.moisture != feedstock.moisture_content_target: 
+        get_feedstock_quantity(yield_HC, feedstock)
+        get_water_quantity(yield_HC, feedstock)
+    return feedstock.total_weight() * (1-feedstock.moisture) * gas_yield
+
+# PW Generated 
+def get_pw(yield_HC: float, gas_yield: float, feedstock: Feedstock, hc_placeholder: float): 
+    return feedstock.total_weight() - (hc_placeholder + get_co2_emissions(yield_HC, gas_yield, feedstock))
+
+# Post-Processing 
+def get_post_processing(hc_placeholder: float):
+    '''
+    Returns electricity used for post-processing in kWh
+    Utilizing this paper for reference: https://www.mdpi.com/1996-1944/16/20/6653
+    '''
+    # Unit: W⋅h
+    vacuum_filtration = 60 * 0.25 
+    drying = 388 * hc_placeholder 
+    
+    return (vacuum_filtration + drying) / 1000
+    
+    
+def split_reactor_conditions(reaction_conditions): 
+    if len(reaction_conditions.split('_')) > 3: 
+        feedstock, temp, time = '_'.join(reaction_conditions.split('_')[:-2]), reaction_conditions.split('_')[-2], reaction_conditions.split('_')[-1]
+    else: 
+        feedstock, temp, time = reaction_conditions.split('_')
+    return feedstock, temp, time 
+
+# Converting Name into relevant parameters
+def get_parameter(reaction_conditions: str, parameter: str) -> float: 
+    '''
+    Returns a value for a parameter of interest based on the reaction conditions. 
+    
+    Parameters: 
+    reaction_conditions: str 
+        Conditions for a reaction (feedstock, temp, time)
+    parameter: str
+        Parameter of interest (gas yield, HC yield, HHV_HC)
+
+    '''
+    reaction_conditions = reaction_conditions.split('hydrochar production, ')[1]
+      
+    if '_mc' in reaction_conditions:
+        reaction_conditions = reaction_conditions.replace('_mc', '', 1)
+        feedstock, temp, time = split_reactor_conditions(reaction_conditions)
+    elif '_sa_lb' in reaction_conditions: 
+        reaction_conditions = reaction_conditions.replace('_sa_lb', '', 1)
+        feedstock, temp, time = split_reactor_conditions(reaction_conditions)
+    elif '_sa_ub' in reaction_conditions: 
+        reaction_conditions = reaction_conditions.replace('_sa_ub', '', 1)
+        feedstock, temp, time = split_reactor_conditions(reaction_conditions)
+    else: 
+        feedstock, temp, time = split_reactor_conditions(reaction_conditions)
+    
+    temp = int(temp.split('C')[0])
+    time = int(time.split('hr')[0])
+    
+    if parameter == 'gas_yield': 
+        df = pd.read_excel('experimental-data/HTC_yield_HHV.xlsx',sheet_name='Yield_Gas', engine='openpyxl')
+    elif parameter == 'HC_yield': 
+        df = pd.read_excel('experimental-data/HTC_yield_HHV.xlsx',sheet_name='Yield_HC', engine='openpyxl')
+    elif parameter == 'HHV_HC': 
+        df = pd.read_excel('experimental-data/HTC_yield_HHV.xlsx',sheet_name='HHV_HC', engine='openpyxl')
+    else: 
+        raise ValueError(f"Parameter '{parameter}' is not valid.")
+                
+    filtered_df = df[df.iloc[:, 0] == str(feedstock) ]
+    
+    # If Loop for Handling Gas Yields for Composite Feedstocks
+    if len(filtered_df) < 1:
+        parameter_value = 0 
+        feedstocks = re.findall(r'([A-Za-z]+)(\d+)', feedstock)
+        
+        for feedstock_name, percent_str in feedstocks: 
+            if feedstock_name == 'rawBSG':
+                feedstock_name = 'stdBSG'
+            if feedstock_name == 'rawSRU': 
+                feedstock_name = 'stdSRU' 
+            percent = float(percent_str) / 100 
+            if percent == 0.33: 
+                percent = 1/3
+            parameter_feedstock = get_parameter(f"hydrochar production, {feedstock_name}_{str(temp)}C_{str(time)}hr", parameter)
+            parameter_value += parameter_feedstock * percent 
+
+        return parameter_value
+    return filtered_df[filtered_df['hours'] == int(time)][int(temp)].iloc[0]
+
+# feedstock_condition = 'hydrochar production, stdSRU_mc_220C_1hr'
+# print(get_parameter(feedstock_condition, 'HHV_HC'))  
+
+
+# feedstock_condition = 'hydrochar production, rawSRU50_rawBSG50_220C_1hr'
+# print(get_parameter(feedstock_condition, 'gas_yield'))  
+
 # print(get_T_o_solution(220.0))
 # print(get_heat_flux(220.0))
 # print(get_reaction_heat(220.0, 1))
 
+# elementary_feedstocks = create_elementary_feedstocks()
+# excluded_feedstocks = {"rawSRU", "rawBSG"}
+# for attr, feedstocks in elementary_feedstocks.__dict__.items():
+#     for feedstock in feedstocks:
+#         if feedstock.name not in excluded_feedstocks:
+#             yield_HC = get_parameter(f"hydrochar production, {feedstock.name}_{feedstock.temp}C_{feedstock.time}hr", 'HC_yield')
+#             get_feedstock_quantity(yield_HC, feedstock)
+#             get_water_quantity(yield_HC, feedstock)
+            
+#             print(f"{feedstock.name} has a quantity of {feedstock.quantity}")
+#             print(f"{feedstock.name}_{feedstock.temp}C_{feedstock.time}hr ramp heat:", ramping_heat(feedstock, feedstock.temp))
+#             print()
