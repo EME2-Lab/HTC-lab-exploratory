@@ -105,4 +105,4 @@ In the example above, we created a virtual environment for a Python 3 environmen
 
 For better package control, consider using [Anaconda](https://www.anaconda.com) or [Miniconda](https://docs.conda.io/en/latest/miniconda.html). These tools allow you to manage dependencies more effectively in isolated environments.
 
-For trouble-shooting, general questions, or other inquiries, contact the developer, Demol Ogunnaike, at **dko22[at]cornell.edu**
+For trouble-shooting, general questions, or other inquiries, contact the developer, Demola Ogunnaike, at **dko22[at]cornell.edu**
