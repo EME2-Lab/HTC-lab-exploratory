@@ -44,7 +44,7 @@ Analysis was mainly done in the Jupyter notebook, `HTC-Uncertainty.ipynb`. Other
 ## Quickstart Guide
 
 ### 1. Setting up your virtual environment
-We assume by now all of you have seen and used virtualenv, but if not, go [here](https://virtualenv.pypa.io/en/stable/installation/) to install and for dead-simple usage go [here](https://virtualenv.pypa.io/en/stable/installation/)
+We assume by now all of you have seen and used virtualenv, but if not, go [here](https://docs.python.org/3/library/venv.html) to install. 
 
 ```bash
 # Create a new python3 virtualenv named venv.
@@ -56,6 +56,8 @@ venv\Scripts\activate # for Windows
 # Install all requirements
 pip install -r requirements.txt
 ```
+### 2. Running Jupyter Notebook 
+Select the virtual environment kernel and run the cells in the Jupyter notebook, `HTC-Uncertainty.ipynb`.
 
 ### Troubleshooting
 
