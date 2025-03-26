@@ -4,7 +4,6 @@ asteval==1.0.4
 asttokens==2.4.1
 astunparse==1.6.3
 blinker==1.8.2
-brightway2==2.4.7
 brightway25==1.0.6
 Brotli==1.1.0
 bw-migrations==0.2

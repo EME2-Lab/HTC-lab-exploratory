@@ -1,6 +1,6 @@
 import openpyxl
 
-class HydrocharLCIA: 
+class HTCLCIA: 
     '''
     Stores Life Cycle Impact Assessment (LCIA) results for producing hydrochar from food waste
     for different feedstock names & conditions. 
@@ -87,23 +87,23 @@ class HydrocharLCIA:
             return list(getattr(self, first_impact_category).keys())
         return []
 
-class HydrocharLCIAManager:
+class HTCLCIAManager:
     '''
-    Stores all created hydrochar LCIA objects in a list.
+    Stores all created HTC LCIA objects in a list.
     '''
     def __init__(self):
-        self.hydrochar_lcias = []
+        self.htc_lcias = []
 
-    def add_hydrochar(self, hydrochar: HydrocharLCIA):
+    def add_lcia(self, hydrochar: HTCLCIA):
         '''Adds a feedstock to Hydrochar LCIA Manager'''
-        self.hydrochar_lcias.append(hydrochar)
+        self.htc_lcias.append(hydrochar)
 
-    def delete_hydrochar(self, name):
-        self.hydrochar_lcias = [hydrochar_lcia for hydrochar_lcia in self.hydrochar_lcias if hydrochar_lcia.name != name]
+    def delete_lcia(self, name):
+        self.htc_lcias = [htc_lcia for htc_lcia in self.htc_lcias if htc_lcia.name != name]
 
-    def get_hydrochar(self, name):
-        for hydrochar_lcia in self.hydrochar_lcias:
-            if hydrochar_lcia.name == name:
-                return hydrochar_lcia
+    def get_lcia(self, name):
+        for htc_lcia in self.htc_lcias:
+            if htc_lcia.name == name:
+                return htc_lcia
         return None
     

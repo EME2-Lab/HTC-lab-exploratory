@@ -78,10 +78,9 @@ In the example above, we created a virtual environment for a Python 3 environmen
        ```
 
 3. **Install Basic Python Libraries**:
-   - Install key libraries:
+   - Install key libraries & initialize the Jupyter Notebook kernel:
      ```bash
-     pip install matplotlib
-     pip install pandas
+     pip install ipykernel matplotlib pandas seaborn 
      ```
 
 4. **Resolve Version Conflicts**:
@@ -98,10 +97,14 @@ In the example above, we created a virtual environment for a Python 3 environmen
    - Set up the project and initialize the biosphere flows.
 
 6. **Install Brightway 2.5 and Supporting Libraries**:
-   - Prepare for importing the ecoinvent database:
+   - Restart the Python environment (e.g., restart Jupyter Notebook or your terminal session) before proceeding.
+   - Install the necessary dependencies for importing the ecoinvent database by running:
      ```bash
-     pip install brightway25 pypardiso
+     pip install -r requirements.txt 
      ```
+    Upon successful installation, skip the `bi.bw2setup()` codeblock, as the biosphere has been initalized using Brightway2. Prior to conducting LCA calculations, the project will be upgraded to a Brightway 2.5 environment that's compatible with the Brightway 2.5 package. 
+    
+    ⚠️ Note: Directly installing `brightway25 pypardiso` may cause import errors when working with the ecoinvent database due to ongoing development of the Brightway package. The `requirements.txt` file includes tested dependencies for this project’s environment. 
 
 ### Alternative Package Management
 
