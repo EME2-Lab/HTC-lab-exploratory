@@ -1,13 +1,13 @@
-# HTC Lab Exploratory: Ogunnaike <i>et al.</i> (2025)
+# HTC Lab Exploratory: Ogunnaike <i>et al.</i> (2025); in prep
 <b>Integrating circularity into Life Cycle Assessments: Environmental consequences of hydrothermal carbonization process selection </b>
 
 Ogunnaike, Demola<sup>1</sup>, Srikrishnan, Vivek<sup>1,2</sup>, Goldfarb, Jillian L.<sup>1,2,3*</sup>
 
-<sup>1</sup> Systems Engineering, Cornell University, Ithaca, New York 14853, USA
-<sup>2</sup> Biological & Environmental Engineering Department, Cornell University, Ithaca, NY, 14853, USA
-<sup>3</sup> Robert Frederick Smith School of Chemical and Biomolecular Engineering, Cornell University, Ithaca, NY, 14853, USA
+<sup>1</sup> Systems Engineering, Cornell University, Ithaca, New York 14853, USA <br>
+<sup>2</sup> Biological & Environmental Engineering Department, Cornell University, Ithaca, NY, 14853, USA <br>
+<sup>3</sup> Robert Frederick Smith School of Chemical and Biomolecular Engineering, Cornell University, Ithaca, NY, 14853, USA <br>
 
-* corresponding author: [goldfarb@cornell.edu](mailto:goldfarb@cornell.edu) 
+\* corresponding author: [goldfarb@cornell.edu](mailto:goldfarb@cornell.edu) 
 
 # Abstract
 Hydrothermal  carbonization (HTC) is a thermochemical process that upgrades wet agro-industrial and food waste feedstocks into a solid hydrochar with coal-like properties. Despite its ability to mitigate environmental impacts from food waste and produce a bioenergy resource, HTC integrated biorefineries have not progressed beyond pilot scale. Identifying favorable reaction conditions that can simultaneously reduce environmental externalities and improve economic performance can enhance viability.   Here we conduct a prospective lab scale gate-to-gate attributional life cycle assessment (ALCA) of an HTC-based biorefinery based on the three largest food waste sources subject to the 2022 New York State Food Donation and Food Scraps Recycling Law  . We demonstrate how process details in HTC, including feedstock choice and reaction condition choice, affect environmental impacts. Using multi-objective systems optimization and multi-criteria decision making to consider trade-offs in HTC’s functionality, we identify that mixtures of food waste source feedstocks have smaller environmental impacts than any individual food waste source feedstock. 
@@ -49,8 +49,7 @@ This repository includes the following main folders:
 - **`experimental-data`**: Contains experimental data from the studies:
   - [Pecchi *et al.* (2022)](https://www.sciencedirect.com/science/article/pii/S0960852422001286?via%3Dihub)
   - [Kassem *et al.* (2022)](https://pubs.acs.org/doi/10.1021/acssuschemeng.2c04188)
-- **`baseline-lcia`**: Includes Life Cycle Impact Assessment (LCIA) results normalized to the functional unit, defined as 1 gram of hydrochar produced.
-- **`results`**: Contains data on TOPSIS scores and uncertainty analysis relevant to the project.
+- **`results`**: Contains Life Cycle Impact Assessment (LCIA) results and data on TOPSIS scores and uncertainty analysis relevant to the project.
 
 Analysis was mainly done in the Jupyter notebook, `HTC-Uncertainty.ipynb`. Other Python files in the repository include helper functions designed for organizational purposes and to support the main analyses.
 
