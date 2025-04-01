@@ -1,5 +1,5 @@
 # HTC Lab Exploratory: Ogunnaike <i>et al.</i> (2025); in prep
-<b>Integrating circularity into Life Cycle Assessments: Environmental consequences of hydrothermal carbonization process selection </b>
+<b>Circularity impacts Life Cycle Assessments: Environmental consequences of hydrothermal carbonization process selection </b>
 
 Ogunnaike, Demola<sup>1</sup>, Srikrishnan, Vivek<sup>1,2</sup>, Goldfarb, Jillian L.<sup>1,2,3*</sup>
 
