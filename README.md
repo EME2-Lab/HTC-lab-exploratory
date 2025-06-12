@@ -56,7 +56,7 @@ Analysis was mainly done in the Jupyter notebook, `HTC-Uncertainty.ipynb`. Other
 ## Reproduction
 
 ### 1. Setting up your virtual environment
-We assume by now all of you have seen and used virtualenv, but if not, go [here](https://docs.python.org/3/library/venv.html) to install. 
+We assume that you have seen and used virtualenv, but if not, go [here](https://docs.python.org/3/library/venv.html) to install. 
 
 ```bash
 # Create a new python3 virtualenv named venv.

@@ -278,6 +278,15 @@ def get_post_processing(hc_placeholder: float):
     
     return (vacuum_filtration + drying) / 1000
     
+# Transportation Inputs (metric ton * km)
+def get_transportation_quantity(feedstock: Feedstock):
+    '''
+    Returns inventory data for transportation in metric ton*km
+    Assuming distance is 25 miles, based on NYS FW Law: https://www.mdpi.com/1996-1944/16/20/6653
+    '''
+    mass = feedstock.quantity * 1e-6  
+    distance = 40.2336
+    return mass*distance   
     
 def split_reactor_conditions(reaction_conditions): 
     if len(reaction_conditions.split('_')) > 3: 
@@ -367,4 +376,8 @@ def get_parameter(reaction_conditions: str, parameter: str) -> float:
             
 #             print(f"{feedstock.name} has a quantity of {feedstock.quantity}")
 #             print(f"{feedstock.name}_{feedstock.temp}C_{feedstock.time}hr ramp heat:", ramping_heat(feedstock, feedstock.temp))
+#             temp_diff = feedstock.temp - 20
+#             ramp_time = 60*get_ramping_time(ramping_heat(feedstock, feedstock.temp), heating_rate=1500)
+#             htrt = temp_diff/ramp_time
+#             print(f"{feedstock.name}_{feedstock.temp}C_{feedstock.time}hr heating rate:" , {htrt})
 #             print()
