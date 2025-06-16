@@ -72,7 +72,7 @@ class HTCLCIA:
         '''
         if hasattr(self, impact_category):
             impact_dict = getattr(self, impact_category)
-            return sum(impact['score'] for impact in impact_dict.values())
+            return sum(impact['score'] for category, impact in impact_dict.items() if category != 'Transportation')
         else:
             raise ValueError(f"Impact category '{impact_category}' does not exist.")
     
