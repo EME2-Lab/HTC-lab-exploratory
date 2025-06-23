@@ -21,7 +21,7 @@ class HTCLCIA:
         
     def create_impact_dict(self):
         '''Creates impact dictioniary with process categories.'''
-        categories = ['Water', 'Electricity - HTC', 'Heat-HTC', 'CO2 - HTC', 'Wastewater', 'Electricity - Post-Processing']
+        categories = ['Water', 'Electricity - HTC', 'Heat-HTC', 'CO2 - HTC', 'Wastewater', 'Electricity - Post-Processing', 'Transportation']
         return {category: {'score': 0.0, 'unit': ''} for category in categories}
 
     def set_impact_score(self, impact_category, process_category, score, unit):
@@ -72,7 +72,7 @@ class HTCLCIA:
         '''
         if hasattr(self, impact_category):
             impact_dict = getattr(self, impact_category)
-            return sum(impact['score'] for impact in impact_dict.values())
+            return sum(impact['score'] for category, impact in impact_dict.items() if category != 'Transportation')
         else:
             raise ValueError(f"Impact category '{impact_category}' does not exist.")
     
